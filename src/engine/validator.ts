@@ -1,5 +1,4 @@
 import type { PuzzleLayout } from './types';
-import { posKey } from './types';
 
 /** Get all 8-directional neighbors of a cell */
 export function getNeighbors(

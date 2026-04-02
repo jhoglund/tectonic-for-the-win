@@ -2,8 +2,6 @@ import type { PuzzleLayout } from '../engine/types';
 import { posKey } from '../engine/types';
 
 interface CellProps {
-  row: number;
-  col: number;
   value: number;
   isClue: boolean;
   isSelected: boolean;
@@ -15,8 +13,6 @@ interface CellProps {
 }
 
 export function Cell({
-  row,
-  col,
   value,
   isClue,
   isSelected,

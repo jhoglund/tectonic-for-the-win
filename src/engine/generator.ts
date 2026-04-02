@@ -1,6 +1,5 @@
 import type { PuzzleLayout, Puzzle, Group, Position, Difficulty } from './types';
 import { posKey } from './types';
-import type { SolveTechnique } from './solver';
 import { solve, countSolutions } from './solver';
 
 /**

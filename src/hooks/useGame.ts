@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { GameState, Difficulty, Puzzle } from '../engine/types';
-import { posKey } from '../engine/types';
 import { findErrors, isSolved } from '../engine/validator';
 import { generatePuzzle } from '../engine/generator';
 

@@ -1,5 +1,4 @@
 import type { PuzzleLayout } from './types';
-import { posKey } from './types';
 import { getNeighbors } from './validator';
 
 export interface SolveResult {
@@ -113,70 +112,6 @@ export function solve(
     }
 
     return true;
-  }
-
-  function unassign(r: number, c: number): void {
-    const val = grid[r][c];
-    grid[r][c] = 0;
-
-    // Rebuild candidates for this cell
-    const groupId = cellGroup[r][c];
-    const groupSize = groups[groupId].cells.length;
-    const cands = new Set<number>();
-    for (let v = 1; v <= groupSize; v++) {
-      cands.add(v);
-    }
-
-    // Remove values present in same group
-    for (const cell of groups[groupId].cells) {
-      if (cell.row === r && cell.col === c) continue;
-      if (grid[cell.row][cell.col] !== 0) {
-        cands.delete(grid[cell.row][cell.col]);
-      }
-    }
-
-    // Remove values present in neighbors
-    for (const [nr, nc] of neighborCache[r][c]) {
-      if (grid[nr][nc] !== 0) {
-        cands.delete(grid[nr][nc]);
-      }
-    }
-
-    candidates[r][c] = cands;
-
-    // Restore val as candidate for neighbors and group cells that could have it
-    for (const [nr, nc] of neighborCache[r][c]) {
-      if (grid[nr][nc] === 0) {
-        rebuildCandidates(nr, nc);
-      }
-    }
-    for (const cell of groups[groupId].cells) {
-      if (cell.row === r && cell.col === c) continue;
-      if (grid[cell.row][cell.col] === 0) {
-        rebuildCandidates(cell.row, cell.col);
-      }
-    }
-  }
-
-  function rebuildCandidates(r: number, c: number): void {
-    const groupId = cellGroup[r][c];
-    const groupSize = groups[groupId].cells.length;
-    const cands = new Set<number>();
-    for (let v = 1; v <= groupSize; v++) {
-      cands.add(v);
-    }
-    for (const cell of groups[groupId].cells) {
-      if (cell.row === r && cell.col === c) continue;
-      if (grid[cell.row][cell.col] !== 0) {
-        cands.delete(grid[cell.row][cell.col]);
-      }
-    }
-    for (const [nr, nc] of neighborCache[r][c]) {
-      if (grid[nr][nc] !== 0) {
-        cands.delete(grid[nr][nc]);
-      }
-    }
-    candidates[r][c] = cands;
   }
 
   function propagate(): boolean {

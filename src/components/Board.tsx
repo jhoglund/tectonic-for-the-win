@@ -33,8 +33,6 @@ export function Board({ gameState, selectedCell, onCellClick }: BoardProps) {
           return (
             <Cell
               key={posKey(r, c)}
-              row={r}
-              col={c}
               value={grid[r][c]}
               isClue={isClue[r][c]}
               isSelected={isSelected}
