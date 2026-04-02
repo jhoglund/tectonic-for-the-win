@@ -29,11 +29,21 @@ export function Cell({
     borders.left ? 'border-l-2 border-l-slate-800' : 'border-l border-l-slate-300',
   ].join(' ');
 
+  const groupColors: Record<number, string> = {
+    1: 'bg-slate-100',
+    2: 'bg-amber-50',
+    3: 'bg-sky-50',
+    4: 'bg-emerald-50',
+    5: 'bg-violet-50',
+  };
+
+  const groupBg = groupColors[groupSize] ?? 'bg-white';
+
   const bgClass = isSelected
-    ? 'bg-blue-100'
+    ? 'bg-blue-200'
     : isError
       ? 'bg-red-100'
-      : 'bg-white';
+      : groupBg;
 
   const textClass = isClue
     ? 'text-slate-800 font-bold'
