@@ -8,9 +8,18 @@ interface CellProps {
   isError: boolean;
   notes: Set<number>;
   groupSize: number;
+  colorIndex: number;
   borders: { top: boolean; right: boolean; bottom: boolean; left: boolean };
   onClick: () => void;
 }
+
+const GROUP_COLORS = [
+  'bg-amber-200',
+  'bg-sky-200',
+  'bg-emerald-200',
+  'bg-violet-200',
+  'bg-rose-200',
+];
 
 export function Cell({
   value,
@@ -19,6 +28,7 @@ export function Cell({
   isError,
   notes,
   groupSize,
+  colorIndex,
   borders,
   onClick,
 }: CellProps) {
@@ -29,20 +39,12 @@ export function Cell({
     borders.left ? 'border-l-2 border-l-slate-800' : 'border-l border-l-slate-300',
   ].join(' ');
 
-  const groupColors: Record<number, string> = {
-    1: 'bg-slate-100',
-    2: 'bg-amber-50',
-    3: 'bg-sky-50',
-    4: 'bg-emerald-50',
-    5: 'bg-violet-50',
-  };
-
-  const groupBg = groupColors[groupSize] ?? 'bg-white';
+  const groupBg = GROUP_COLORS[colorIndex % GROUP_COLORS.length];
 
   const bgClass = isSelected
-    ? 'bg-blue-200'
+    ? 'bg-blue-300'
     : isError
-      ? 'bg-red-100'
+      ? 'bg-red-200'
       : groupBg;
 
   const textClass = isClue
