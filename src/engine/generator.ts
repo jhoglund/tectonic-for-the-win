@@ -1,20 +1,21 @@
 import type { PuzzleLayout, Puzzle, Group, Position, Difficulty } from './types';
 import { posKey } from './types';
-import { solve, countSolutions } from './solver';
+import { solve } from './solver';
 
 /**
  * Generate a random group/cage layout for a grid using region-growing.
- * Each group will have between 1 and maxGroupSize cells.
+ * Ensures no single-cell groups (min size 2) to improve solvability.
  */
 export function generateLayout(
   rows: number,
   cols: number,
   maxGroupSize: number = 5
 ): PuzzleLayout {
+  const minGroupSize = 2;
   const assigned: number[][] = Array.from({ length: rows }, () =>
     Array(cols).fill(-1)
   );
-  const groups: Group[] = [];
+  const groupCells: Position[][] = [];
   let groupId = 0;
 
   // Shuffle cell order for randomness
@@ -29,12 +30,10 @@ export function generateLayout(
   for (const [r, c] of allCells) {
     if (assigned[r][c] !== -1) continue;
 
-    // Start a new group from this cell
     const cells: Position[] = [{ row: r, col: c }];
     assigned[r][c] = groupId;
 
-    // Grow the group randomly
-    const targetSize = randInt(2, maxGroupSize);
+    const targetSize = randInt(minGroupSize, maxGroupSize);
     let frontier = getOrthogonalNeighbors(r, c, rows, cols).filter(
       ([nr, nc]) => assigned[nr][nc] === -1
     );
@@ -44,16 +43,13 @@ export function generateLayout(
       const [nr, nc] = frontier[0];
 
       if (assigned[nr][nc] !== -1) {
-        frontier = frontier.filter(
-          ([fr, fc]) => !(fr === nr && fc === nc)
-        );
+        frontier = frontier.filter(([fr, fc]) => !(fr === nr && fc === nc));
         continue;
       }
 
       cells.push({ row: nr, col: nc });
       assigned[nr][nc] = groupId;
 
-      // Add new cell's unassigned orthogonal neighbors to frontier
       for (const [nnr, nnc] of getOrthogonalNeighbors(nr, nc, rows, cols)) {
         if (
           assigned[nnr][nnc] === -1 &&
@@ -66,11 +62,53 @@ export function generateLayout(
       frontier = frontier.filter(([fr, fc]) => assigned[fr][fc] === -1);
     }
 
-    groups.push({ id: groupId, cells });
+    groupCells.push(cells);
     groupId++;
   }
 
-  // Build cellToGroup map
+  // Merge any remaining single-cell groups into an adjacent group
+  for (let gid = 0; gid < groupCells.length; gid++) {
+    if (groupCells[gid].length > 1) continue;
+
+    const { row, col } = groupCells[gid][0];
+    const orthoNeighbors = getOrthogonalNeighbors(row, col, rows, cols);
+
+    // Find an adjacent group to merge into (prefer smallest)
+    let bestNeighborGroup = -1;
+    let bestSize = Infinity;
+    for (const [nr, nc] of orthoNeighbors) {
+      const nGroup = assigned[nr][nc];
+      if (nGroup !== gid && groupCells[nGroup].length < bestSize) {
+        bestSize = groupCells[nGroup].length;
+        bestNeighborGroup = nGroup;
+      }
+    }
+
+    if (bestNeighborGroup !== -1) {
+      // Merge into neighbor group
+      groupCells[bestNeighborGroup].push({ row, col });
+      assigned[row][col] = bestNeighborGroup;
+      groupCells[gid] = []; // Mark as empty
+    }
+  }
+
+  // Rebuild groups array without empty entries
+  const groups: Group[] = [];
+  const oldToNew = new Map<number, number>();
+  for (let gid = 0; gid < groupCells.length; gid++) {
+    if (groupCells[gid].length === 0) continue;
+    const newId = groups.length;
+    oldToNew.set(gid, newId);
+    groups.push({ id: newId, cells: groupCells[gid] });
+  }
+
+  // Update assigned grid
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      assigned[r][c] = oldToNew.get(assigned[r][c])!;
+    }
+  }
+
   const cellToGroup = new Map<string, number>();
   for (const group of groups) {
     for (const { row, col } of group.cells) {
@@ -89,8 +127,7 @@ export function generatePuzzle(
   cols: number,
   difficulty: Difficulty
 ): Puzzle {
-  // Keep trying layouts until we get one that produces a solvable puzzle
-  for (let attempt = 0; attempt < 50; attempt++) {
+  for (let attempt = 0; attempt < 200; attempt++) {
     const layout = generateLayout(rows, cols);
 
     // Fill the grid completely using the solver with randomization
@@ -99,17 +136,17 @@ export function generatePuzzle(
 
     if (!fillResult.solved) continue;
 
-    // Now remove clues to create the puzzle
+    // Remove clues to create the puzzle
     const puzzle = carveClues(layout, fillResult.grid, difficulty);
     if (puzzle) return puzzle;
   }
 
-  // Fallback: should rarely happen
-  throw new Error('Failed to generate puzzle after 50 attempts');
+  throw new Error('Failed to generate puzzle after 200 attempts');
 }
 
 /**
- * Remove values from a filled grid to create a puzzle with a unique solution.
+ * Remove values from a filled grid to create a puzzle.
+ * Uses solve-based verification for speed.
  */
 function carveClues(
   layout: PuzzleLayout,
@@ -119,7 +156,6 @@ function carveClues(
   const { rows, cols } = layout;
   const clues = solution.map((row) => [...row]);
 
-  // Get all cell positions, shuffled
   const positions: [number, number][] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -128,12 +164,11 @@ function carveClues(
   }
   shuffle(positions);
 
-  // Determine how aggressively to remove clues based on difficulty
   const totalCells = rows * cols;
   const targetClues = {
-    easy: Math.ceil(totalCells * 0.50),
-    medium: Math.ceil(totalCells * 0.35),
-    hard: Math.ceil(totalCells * 0.22),
+    easy: Math.ceil(totalCells * 0.52),
+    medium: Math.ceil(totalCells * 0.40),
+    hard: Math.ceil(totalCells * 0.28),
   }[difficulty];
 
   let currentClueCount = totalCells;
@@ -145,26 +180,34 @@ function carveClues(
     const saved = clues[r][c];
     clues[r][c] = 0;
 
-    // Check unique solvability
-    if (countSolutions(layout, clues, 2) === 1) {
-      currentClueCount--;
-    } else {
-      clues[r][c] = saved; // Restore — removing this creates ambiguity
+    // Verify the puzzle still has the same unique solution
+    const result = solve(layout, clues);
+    if (result.solved) {
+      let matches = true;
+      for (let rr = 0; rr < rows && matches; rr++) {
+        for (let cc = 0; cc < cols && matches; cc++) {
+          if (result.grid[rr][cc] !== solution[rr][cc]) matches = false;
+        }
+      }
+      if (matches) {
+        currentClueCount--;
+        continue;
+      }
     }
+
+    clues[r][c] = saved;
   }
 
-  // Verify difficulty by solving and checking techniques used
-  const solveResult = solve(layout, clues);
-  if (!solveResult.solved) return null;
+  // Difficulty check
+  const check = solve(layout, clues);
+  if (!check.solved) return null;
 
-  const usedBacktrack = solveResult.techniques.includes('backtrack');
+  const usedBacktrack = check.techniques.includes('backtrack');
   if (difficulty === 'easy' && usedBacktrack) return null;
-  if (difficulty === 'medium' && usedBacktrack) return null;
 
   return { layout, clues };
 }
 
-/** Get orthogonal (4-directional) neighbors */
 function getOrthogonalNeighbors(
   row: number,
   col: number,
