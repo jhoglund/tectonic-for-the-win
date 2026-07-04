@@ -2,7 +2,7 @@
 
 > *How* it's built. The *what* (player-facing) lives in [`PRD.md`](PRD.md).
 
-**Last updated:** 2026-05-14
+**Last updated:** 2026-07-04
 
 ---
 
@@ -71,11 +71,9 @@ Tutorial puzzles bypass this calibration — they are hand-curated JSON fixtures
 - `selectedCell`, `hint`, `hintMode`, `notesMode`
 - `isGenerating` — true while the worker is producing a new puzzle
 
-### Persistence (to be added)
+### Persistence
 
-Persistence is **not yet implemented**. The current app holds state in React only; refreshing loses it (except via share URL).
-
-For v1 we need three persistence surfaces, all local-only:
+State is local-first. Three surfaces persist locally:
 
 | Store | Contents | Backed by |
 |-------|----------|-----------|
@@ -83,7 +81,15 @@ For v1 we need three persistence surfaces, all local-only:
 | **Active game** | Current `GameState` so refresh / app-background doesn't lose progress | `localStorage` keyed by `active-game` |
 | **Stats** | Solve times per difficulty, daily-puzzle results, streak counter | `localStorage` initially |
 
-No cloud sync in v1 (see [`docs/decisions/ADR-0009-multiplayer-scope-v1.md`](docs/decisions/ADR-0009-multiplayer-scope-v1.md)). Cross-device requires a backend; the kill criterion before building one is in `PRD.md` §10.
+The **player profile** is additionally mirrored to a small **Cloudflare Worker + KV**
+backend so it follows the single user across devices (web on GitHub Pages, iOS via
+Capacitor). Sync is env-gated and graceful: with the sync vars unset the app runs fully
+local-only, exactly as the table above describes. This replaced the earlier Supabase
+plan; identity is a stubbed single local user, not a real auth system (ADR-0020). For the
+live deployment and the operating runbook see [`docs/backend-sync.md`](docs/backend-sync.md);
+for the decision see [`docs/decisions/ADR-0020-sync-off-supabase-cloudflare-worker.md`](docs/decisions/ADR-0020-sync-off-supabase-cloudflare-worker.md).
+The v1 "no cloud sync" scope (see [`docs/decisions/ADR-0009-multiplayer-scope-v1.md`](docs/decisions/ADR-0009-multiplayer-scope-v1.md))
+still holds for multiplayer; single-user profile sync is the one exception.
 
 ---
 
@@ -126,13 +132,20 @@ iOS-specific concerns when we get there:
 
 ---
 
-## 8. What this app does NOT have
+## 8. Backend surface (deliberately minimal)
 
-- No backend, no API, no database
-- No analytics yet (added before soft launch — see backlog)
-- No authentication
-- No cross-device sync
-- No Capacitor / native wrappers
-- No CI
+The app is local-first and single-user. The only backend is a small **Cloudflare
+Worker + KV** that mirrors the one player profile for cross-device sync
+(`GET` / `PUT /profile`, one KV key). There is no database, no general API, and no
+real auth: identity is stubbed to one fixed local user. See
+[`docs/backend-sync.md`](docs/backend-sync.md) for the live deployment and runbook, and
+ADR-0020 for the decision. Web ships to GitHub Pages and iOS via Capacitor (build 7 on
+TestFlight); deploy runs from GitHub Actions.
 
-Several of these are required before App Store launch; the order is in [`docs/backlog.md`](docs/backlog.md).
+Still absent by design at this stage:
+
+- No relational database, no general-purpose API (KV holds one profile blob only)
+- No real authentication or per-user isolation (single-user, single bearer secret; ADR-0020)
+- No analytics yet (added before soft launch, see backlog)
+
+Several items are required before App Store launch; the order is in [`docs/backlog.md`](docs/backlog.md).
