@@ -37,6 +37,7 @@ Solo project, file-based. Three places to look or write.
 |-------|------------------|
 | [`docs/decisions/`](docs/decisions/) | ADRs — decisions with consequences beyond a single PR. MADR-lite format; see [`docs/decisions/README.md`](docs/decisions/README.md). |
 | [`docs/backlog.md`](docs/backlog.md) | Single tracker — Now (active), Next (committed), Later (intent), Open questions. The App Store launch plan lives here. |
+| [`docs/backend-sync.md`](docs/backend-sync.md) | Current backend state + pickup runbook: the Cloudflare Worker + KV profile sync that replaced Supabase (ADR-0020). Read this when resuming and unsure how the backend works. |
 | [`docs/handovers/`](docs/handovers/) | End-of-session handover notes for picking up multi-session work. |
 
 ### Conventions
