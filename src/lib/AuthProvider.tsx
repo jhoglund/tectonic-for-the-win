@@ -1,269 +1,47 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Capacitor } from '@capacitor/core';
-import type { EmailOtpType, User } from '@supabase/supabase-js';
-import { supabase } from './supabase';
-import { analytics } from './analytics';
+import type { ReactNode } from 'react';
 import {
   AuthContext,
   type AuthResult,
-  type AuthStatus,
   type AuthUser,
 } from './authContext';
 
-/** Map a Supabase user onto the trimmed shape the app consumes. */
-function toAuthUser(user: User | null | undefined): AuthUser | null {
-  if (!user) return null;
-  // Supabase >= 2.43 exposes `is_anonymous` on the user record. Older
-  // builds and OAuth-linked users leave it falsy.
-  const isAnonymous =
-    (user as User & { is_anonymous?: boolean }).is_anonymous === true;
-  return { id: user.id, email: user.email ?? '', isAnonymous };
-}
+/**
+ * The sole, constant local user (ADR-0020). Tectonic is single-user and
+ * local-first; there is no login. This id is the stable key the profile
+ * sync layer uses so ProfileProvider's pull/push effects fire exactly as
+ * they did under the old auth, just with one fixed identity.
+ */
+const LOCAL_USER: AuthUser = {
+  id: 'local',
+  email: '',
+  isAnonymous: false,
+};
 
-function statusFor(user: AuthUser | null): AuthStatus {
-  if (!user) return 'loading';
-  return user.isAnonymous ? 'anonymous' : 'signed-in';
-}
-
-/** Where Apple/Google should redirect back to after an OAuth round-trip.
- *  The Supabase client's `detectSessionInUrl` reads the hash params here
- *  and completes sign-in without any router help. */
-function redirectTo(): string {
-  if (typeof window === 'undefined') return '';
-  if (Capacitor.isNativePlatform()) return 'tectonic://auth/callback';
-  // Strip any existing hash so a fresh OAuth callback hash lands clean.
-  return window.location.origin + window.location.pathname;
-}
-
-function isNativeAuth(): boolean {
-  return typeof window !== 'undefined' && Capacitor.isNativePlatform();
-}
-
-function paramsFromAuthUrl(url: string): Record<string, string> {
-  const parsed = new URL(url);
-  const params: Record<string, string> = {};
-  if (parsed.hash.startsWith('#')) {
-    new URLSearchParams(parsed.hash.slice(1)).forEach((value, key) => {
-      params[key] = value;
-    });
-  }
-  parsed.searchParams.forEach((value, key) => {
-    params[key] = value;
-  });
-  return params;
-}
+/** Sign-in actions are no-ops since there is nothing to sign into. */
+const noopResult: AuthResult = { ok: true };
+const noopAction = async (): Promise<AuthResult> => noopResult;
+const noopSignOut = async (): Promise<void> => {};
 
 /**
- * Tracks the Supabase Auth session and exposes the four entry points
- * the app uses today: Apple, Google, email magic link, and sign-out.
- * Follows the anonymous-by-default pattern (ADR-0017) — on first launch
- * with no session, `signInAnonymously` runs silently so the player has
- * a real Supabase user ID from the very first puzzle, and the upgrade
- * to a real provider preserves that ID via `linkIdentity`.
+ * Reports one constant, always-signed-in user. Replaces the Supabase-backed
+ * provider (ADR-0020, supersedes ADR-0013 / ADR-0017): no anonymous
+ * bootstrap, no OAuth, no magic link, no session listener. The context
+ * shape is unchanged so `ProfileProvider` and the Settings/DevTools
+ * consumers compile untouched.
  *
- * When Supabase is not configured the status is `disabled` and the
- * actions return a friendly failure — nothing throws, so the app runs
- * local-only exactly as before.
- *
- * Mount this *outside* ProfileProvider: the profile-sync layer reacts
- * to auth state, so it must be able to read this context.
+ * Mount this *outside* ProfileProvider: the profile-sync layer reads this
+ * context to get the user id.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [status, setStatus] = useState<AuthStatus>(
-    supabase ? 'loading' : 'disabled',
-  );
-  const [user, setUser] = useState<AuthUser | null>(null);
-  // Guards `signInAnonymously` against firing twice while the initial
-  // session is still being fetched (StrictMode double-invokes effects).
-  const bootstrapping = useRef(false);
-
-  useEffect(() => {
-    if (!supabase) return;
-    let active = true;
-
-    // Resolve the initial session, then keep in sync with auth changes
-    // (sign-in, sign-out, token refresh) for the rest of the session.
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!active) return;
-      if (data.session) {
-        const u = toAuthUser(data.session.user);
-        setUser(u);
-        setStatus(statusFor(u));
-        return;
-      }
-      // No session — bootstrap a silent anonymous user so the app has
-      // server-side state from the first launch (ADR-0017).
-      if (bootstrapping.current) return;
-      bootstrapping.current = true;
-      const { data: anon, error } = await supabase!.auth.signInAnonymously();
-      bootstrapping.current = false;
-      if (!active) return;
-      if (error || !anon.session) {
-        // Anonymous sign-ins disabled in the dashboard, or transient
-        // network failure — keep the app usable, fall back to a
-        // signed-out shape with no user.
-        setStatus('anonymous');
-        setUser(null);
-        return;
-      }
-      const u = toAuthUser(anon.session.user);
-      setUser(u);
-      setStatus(statusFor(u));
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      const u = toAuthUser(session?.user);
-      setUser(u);
-      setStatus(u ? statusFor(u) : 'loading');
-    });
-
-    return () => {
-      active = false;
-      sub.subscription.unsubscribe();
-    };
-  }, []);
-
-  const handleAuthCallback = useCallback(async (url: string) => {
-    if (!supabase) return;
-    const params = paramsFromAuthUrl(url);
-    if (params.error || params.error_description) {
-      console.warn('[AuthProvider] auth callback failed', params.error_description ?? params.error);
-      return;
-    }
-    if (params.code) {
-      const { error } = await supabase.auth.exchangeCodeForSession(params.code);
-      if (error) console.warn('[AuthProvider] code exchange failed', error.message);
-      return;
-    }
-    if (params.token_hash && params.type) {
-      const { error } = await supabase.auth.verifyOtp({
-        token_hash: params.token_hash,
-        type: params.type as EmailOtpType,
-      });
-      if (error) console.warn('[AuthProvider] token hash verification failed', error.message);
-      return;
-    }
-    if (params.access_token && params.refresh_token) {
-      const { error } = await supabase.auth.setSession({
-        access_token: params.access_token,
-        refresh_token: params.refresh_token,
-      });
-      if (error) console.warn('[AuthProvider] session callback failed', error.message);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!supabase || typeof window === 'undefined') return;
-
-    const target = window as typeof window & {
-      __handleAuthCallback?: (url: string) => void;
-      __pendingAuthCallback?: string;
-    };
-    target.__handleAuthCallback = (url: string) => {
-      void handleAuthCallback(url);
-    };
-    if (target.__pendingAuthCallback) {
-      const pending = target.__pendingAuthCallback;
-      delete target.__pendingAuthCallback;
-      void handleAuthCallback(pending);
-    }
-    const params = paramsFromAuthUrl(window.location.href);
-    if (params.code || params.token_hash || params.access_token) {
-      void handleAuthCallback(window.location.href);
-    }
-    return () => {
-      delete target.__handleAuthCallback;
-    };
-  }, [handleAuthCallback]);
-
-  /** Apple / Google share one shape: link onto the anonymous user if
-   *  there is one (preserving the user ID + everything attached), or
-   *  redirect to a fresh sign-in if accounts are not enabled. */
-  const oauthEntry = useCallback(
-    async (provider: 'apple' | 'google'): Promise<AuthResult> => {
-      if (!supabase) {
-        return { ok: false, message: 'Accounts are not available.' };
-      }
-      const opts = { redirectTo: redirectTo() };
-      // `linkIdentity` is the right path when the player is anonymous —
-      // it attaches the OAuth identity to the existing user. If there's
-      // no user yet (rare; bootstrap failed), fall through to a fresh
-      // signInWithOAuth which creates a brand-new account.
-      const link =
-        user && user.isAnonymous
-          ? await supabase.auth.linkIdentity({ provider, options: opts })
-          : await supabase.auth.signInWithOAuth({ provider, options: opts });
-      if (link.error) return { ok: false, message: link.error.message };
-      analytics.signedIn();
-      return { ok: true };
-    },
-    [user],
-  );
-
-  const signInWithApple = useCallback(
-    () => oauthEntry('apple'),
-    [oauthEntry],
-  );
-  const signInWithGoogle = useCallback(
-    () => oauthEntry('google'),
-    [oauthEntry],
-  );
-
-  const signInWithMagicLink = useCallback(
-    async (email: string): Promise<AuthResult> => {
-      if (!supabase) {
-        return { ok: false, message: 'Accounts are not available.' };
-      }
-      const trimmed = email.trim();
-      if (!trimmed) {
-        return { ok: false, message: 'Enter an email address.' };
-      }
-      // For an anonymous user: `updateUser({ email })` queues an email
-      // confirmation that attaches this email to the existing user once
-      // the link is followed — the anonymous progress is preserved.
-      // For everyone else: `signInWithOtp` sends a fresh sign-in link.
-      const emailRedirectTo = redirectTo();
-      const op =
-        user && user.isAnonymous && !isNativeAuth()
-          ? await supabase.auth.updateUser(
-              { email: trimmed },
-              { emailRedirectTo },
-            )
-          : await supabase.auth.signInWithOtp({
-              email: trimmed,
-              options: { emailRedirectTo },
-            });
-      if (op.error) return { ok: false, message: op.error.message };
-      analytics.signedUp();
-      return { ok: true, needsConfirmation: true };
-    },
-    [user],
-  );
-
-  const signOut = useCallback(async (): Promise<void> => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
-    analytics.signedOut();
-    // The auth state listener will fire with session = null; the
-    // initial-getSession path won't re-run, so bootstrap a fresh
-    // anonymous user here so the app continues to have one.
-    const { data } = await supabase.auth.signInAnonymously();
-    if (data.session) {
-      const u = toAuthUser(data.session.user);
-      setUser(u);
-      setStatus(statusFor(u));
-    }
-  }, []);
-
   return (
     <AuthContext.Provider
       value={{
-        status,
-        user,
-        signInWithApple,
-        signInWithGoogle,
-        signInWithMagicLink,
-        signOut,
+        status: 'signed-in',
+        user: LOCAL_USER,
+        signInWithApple: noopAction,
+        signInWithGoogle: noopAction,
+        signInWithMagicLink: noopAction,
+        signOut: noopSignOut,
       }}
     >
       {children}

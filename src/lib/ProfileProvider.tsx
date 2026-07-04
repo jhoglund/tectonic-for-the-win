@@ -36,10 +36,11 @@ const PUSH_DEBOUNCE_MS = 1500;
  * persisted on every mutation. Wrap the app in this so all surfaces
  * share one profile.
  *
- * When a user is signed in (ADR-0013), the profile also syncs: it is
- * pulled and reconciled on sign-in, and local changes are pushed up
- * after a short debounce. Signed out, it is local-only exactly as
- * before. Must sit inside AuthProvider.
+ * When sync is configured (ADR-0020), the profile also mirrors to the
+ * Cloudflare Worker + KV: it is pulled and reconciled on start-up, and
+ * local changes are pushed up after a short debounce. With sync
+ * unconfigured it is local-only exactly as before. Must sit inside
+ * AuthProvider, which supplies the fixed local user id.
  */
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -115,11 +116,10 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const userId = user?.id ?? null;
   const userEmail = user?.email ?? null;
 
-  // Pull on sign-in: fetch the server profile and reconcile. A user
-  // with no server row yet (first sign-in) has their local profile
-  // adopted as the account. A developer-allowlisted email (ADR-0014)
-  // is elevated to the developer role here, so the role carries across
-  // every device the account signs in on.
+  // Pull on start-up: fetch the stored profile and reconcile. With no
+  // stored profile yet (first sync) the local profile is adopted as the
+  // server copy. A developer-allowlisted email (ADR-0014) would elevate
+  // here, but the local user has no email, so that path is inert now.
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;

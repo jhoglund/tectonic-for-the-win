@@ -1,0 +1,21 @@
+# Tectonic profile-sync Worker (ADR-0020).
+#
+# One route pair (GET/PUT /profile) backed by a single KV namespace, one
+# key. Replaces the Supabase profiles table for the sole-user profile sync.
+
+name = "tectonic-sync"
+main = "src/index.ts"
+compatibility_date = "2026-07-04"
+
+# KV namespace holding the single profile blob.
+#
+# Create it once with:
+#   npx wrangler kv namespace create PROFILES
+# then paste the returned id below (replacing the placeholder).
+[[kv_namespaces]]
+binding = "PROFILES"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# SYNC_SECRET is NOT set here, it is a Worker secret, set out of band with:
+#   npx wrangler secret put SYNC_SECRET
+# (see README.md). Never commit the secret to this file.

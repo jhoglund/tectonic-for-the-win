@@ -9,8 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_MIMIR_ENDPOINT?: string;
   /** App version reported with every Mimir event. */
   readonly VITE_MIMIR_APP_VERSION?: string;
-  /** Supabase project URL — enables player accounts when set (ADR-0013). */
-  readonly VITE_SUPABASE_URL?: string;
-  /** Supabase anon (public) key — client-safe; RLS is the security boundary. */
-  readonly VITE_SUPABASE_ANON_KEY?: string;
+  /** Profile-sync Worker origin (no trailing slash) — enables sync when set (ADR-0020). */
+  readonly VITE_SYNC_URL?: string;
+  /** Bearer secret for the sync Worker — ships in the bundle (single-user, low stakes). */
+  readonly VITE_SYNC_SECRET?: string;
 }

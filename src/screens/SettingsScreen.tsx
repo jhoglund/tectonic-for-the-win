@@ -1,10 +1,8 @@
 import { useRef, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { RedeemCodeSheet } from '../components/RedeemCodeSheet';
-import { AuthSheet } from '../components/AuthSheet';
 import { DevTools } from '../components/DevTools';
 import { useProfile } from '../lib/profileContext';
-import { useAuth } from '../lib/authContext';
 import { isPremium, isDeveloper } from '../lib/profile';
 import { useEffectiveDeveloper } from '../lib/devViewContext';
 
@@ -46,18 +44,16 @@ function Rule({ heading, body }: { heading: string; body: string }) {
 }
 
 /**
- * Settings tab — v1 Phase 4, backlog item 19. The Account section
- * (sign in / sign out) lands with accounts (ADR-0013); it is hidden
- * entirely when Supabase is not configured, so the app still reads as
- * local-only in that case. Theme, sound, and haptics are deferred
- * until those features exist; Restore Purchase / Manage Subscription
- * land with the StoreKit work.
+ * Settings tab — v1 Phase 4, backlog item 19. There is no Account
+ * section: since ADR-0020 the app is single-user and local-first, with
+ * profile sync handled by a bearer-secret Worker rather than a per-user
+ * login, so there is nothing to sign in or out of. Theme, sound, and
+ * haptics are deferred until those features exist; Restore Purchase /
+ * Manage Subscription land with the StoreKit work.
  */
 export function SettingsScreen() {
-  const { profile, syncState, devSetProfile } = useProfile();
-  const { status, user, signOut } = useAuth();
+  const { profile, devSetProfile } = useProfile();
   const [redeemOpen, setRedeemOpen] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
   const [devNote, setDevNote] = useState<string | null>(null);
   // Tap count — a ref, not state: it isn't displayed, and a ref
   // increments synchronously so rapid taps all land.
@@ -94,100 +90,6 @@ export function SettingsScreen() {
     <div>
       <ScreenHeader title="Settings" />
       <div className="flex flex-col gap-4 px-4 pt-2 pb-8">
-        {/* account — hidden when Supabase is not configured */}
-        {status !== 'disabled' && (
-          <div>
-            <p className="mb-2 px-1 text-xs font-semibold" style={sectionLabel}>
-              ACCOUNT
-            </p>
-            <div className="flex flex-col gap-3" style={card}>
-              {status === 'signed-in' && user ? (
-                <>
-                  <div className="flex items-center justify-between gap-3">
-                    <span
-                      className="text-sm"
-                      style={{ color: 'var(--text-secondary)' }}
-                    >
-                      Signed in
-                    </span>
-                    <span
-                      className="truncate text-sm font-medium"
-                      style={{ color: 'var(--text-primary)' }}
-                    >
-                      {user.email}
-                    </span>
-                  </div>
-                  {syncState !== 'idle' && (
-                    <p
-                      className="text-xs"
-                      style={{
-                        color:
-                          syncState === 'error'
-                            ? 'var(--danger)'
-                            : 'var(--text-tertiary)',
-                      }}
-                    >
-                      {syncState === 'syncing'
-                        ? 'Syncing your progress…'
-                        : syncState === 'error'
-                          ? 'Couldn’t sync — will retry on next sign-in.'
-                          : 'Your progress is synced.'}
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => void signOut()}
-                    className="cursor-pointer py-2.5 text-sm font-medium"
-                    style={{
-                      color: 'var(--text-secondary)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 'var(--radius-button)',
-                    }}
-                  >
-                    Log out
-                  </button>
-                </>
-              ) : status === 'loading' ? (
-                <p
-                  className="py-1 text-sm"
-                  style={{ color: 'var(--text-tertiary)' }}
-                >
-                  Checking your account…
-                </p>
-              ) : (
-                <>
-                  <p
-                    className="text-sm font-medium"
-                    style={{ color: 'var(--text-primary)' }}
-                  >
-                    Playing as a guest
-                  </p>
-                  <p
-                    className="text-sm"
-                    style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}
-                  >
-                    Save your progress to keep your puzzles, mastery and streak
-                    safe — and sync them across your devices.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setAuthOpen(true)}
-                    className="cursor-pointer py-2.5 text-sm font-semibold"
-                    style={{
-                      color: 'var(--text-on-brand)',
-                      background: 'var(--brand-600)',
-                      border: '1px solid var(--brand-600)',
-                      borderRadius: 'var(--radius-button)',
-                    }}
-                  >
-                    Save your progress
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* plan */}
         <div>
           <p className="mb-2 px-1 text-xs font-semibold" style={sectionLabel}>
@@ -286,10 +188,8 @@ export function SettingsScreen() {
               style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}
             >
               Tectonic Legend is a logic puzzle of cages and numbers — no
-              guessing, just reasoning.{' '}
-              {status === 'disabled'
-                ? 'Your progress is kept on this device only.'
-                : 'Your progress is saved on this device, and synced to your account when you’re signed in.'}
+              guessing, just reasoning. Your progress is saved on this device,
+              and synced across your devices when sync is configured.
             </p>
           </div>
         </div>
@@ -299,7 +199,7 @@ export function SettingsScreen() {
             <p className="mb-2 px-1 text-xs font-semibold" style={sectionLabel}>
               DEVELOPER
             </p>
-            <DevTools onOpenAuth={() => setAuthOpen(true)} />
+            <DevTools />
           </div>
         )}
 
@@ -315,7 +215,6 @@ export function SettingsScreen() {
         open={redeemOpen}
         onClose={() => setRedeemOpen(false)}
       />
-      <AuthSheet open={authOpen} onClose={() => setAuthOpen(false)} />
     </div>
   );
 }

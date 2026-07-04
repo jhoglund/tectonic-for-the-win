@@ -48,6 +48,11 @@ The decision itself. 1–3 sentences.
 | [0010](ADR-0010-daily-puzzle-design.md) | Daily puzzle system design | Proposed |
 | [0011](ADR-0011-v1-scope-triage.md) | v1 scope — prototype triaged against the PRD | Accepted |
 | [0012](ADR-0012-difficulty-is-player-choice.md) | Difficulty is player-choice — stage gating disabled | Accepted |
-| [0013](ADR-0013-supabase-as-the-backend.md) | Supabase as the backend platform | Accepted |
+| [0013](ADR-0013-supabase-as-the-backend.md) | Supabase as the backend platform | Superseded by ADR-0020 |
 | [0014](ADR-0014-developer-role-and-debug-panel.md) | Developer role and in-app debug panel | Accepted |
 | [0015](ADR-0015-notes-as-hint-visual-language.md) | Candidate notes as the hint visual language | Accepted |
+| [0016](ADR-0016-value-set-chip-for-constrained-regions.md) | Value-set chip for constrained regions | Accepted |
+| [0017](ADR-0017-anonymous-by-default-auth.md) | Anonymous-by-default auth | Superseded by ADR-0020 |
+| [0018](ADR-0018-legend-stage-and-mastery-depth.md) | Legend stage and mastery depth | Accepted |
+| [0019](ADR-0019-legend-tiers-and-leaderboard.md) | Legend tiers and leaderboard | Accepted |
+| [0020](ADR-0020-sync-off-supabase-cloudflare-worker.md) | Profile sync off Supabase to a Cloudflare Worker + KV | Accepted |

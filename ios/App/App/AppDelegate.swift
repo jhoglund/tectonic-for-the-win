@@ -34,10 +34,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-        if url.scheme == "tectonic" {
-            scheduleAuthCallback(url.absoluteString)
-            return true
-        }
         return ApplicationDelegateProxy.shared.application(app, open: url, options: options)
     }
 
@@ -46,44 +42,5 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Feel free to add additional processing here, but if you want the App API to support
         // tracking app url opens, make sure to keep this call
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
-    }
-
-    private func scheduleAuthCallback(_ urlString: String) {
-        [0.2, 0.8, 1.6].forEach { delay in
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                guard
-                    let scene = UIApplication.shared.connectedScenes
-                        .compactMap({ $0 as? UIWindowScene }).first,
-                    let rootVC = scene.keyWindow?.rootViewController,
-                    let bridgeVC = rootVC as? CAPBridgeViewController,
-                    let webView = bridgeVC.bridge?.webView
-                else {
-                    return
-                }
-
-                let encodedUrl = Self.javascriptStringLiteral(urlString)
-                let js = """
-                (function() {
-                  var url = \(encodedUrl);
-                  if (typeof window.__handleAuthCallback === 'function') {
-                    window.__handleAuthCallback(url);
-                  } else {
-                    window.__pendingAuthCallback = url;
-                  }
-                })();
-                """
-                webView.evaluateJavaScript(js)
-            }
-        }
-    }
-
-    private static func javascriptStringLiteral(_ value: String) -> String {
-        guard
-            let data = try? JSONSerialization.data(withJSONObject: [value], options: []),
-            let json = String(data: data, encoding: .utf8)
-        else {
-            return "''"
-        }
-        return String(json.dropFirst().dropLast())
     }
 }

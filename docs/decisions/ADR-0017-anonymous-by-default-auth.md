@@ -1,8 +1,7 @@
 # ADR-0017: Anonymous-by-default auth, upgrade at value moments
 
 **Date:** 2026-05-20
-**Status:** Accepted
-**Source:** Extends [ADR-0013](ADR-0013-supabase-as-the-backend.md) — Supabase as the backend. Supersedes the email+password signup-wall shipped under accounts plan §5.
+**Status:** Superseded by [ADR-0020](ADR-0020-sync-off-supabase-cloudflare-worker.md) — auth removed (single-user). Originally extended [ADR-0013](ADR-0013-supabase-as-the-backend.md) and superseded the email+password signup-wall shipped under accounts plan §5.
 
 ## Context
 

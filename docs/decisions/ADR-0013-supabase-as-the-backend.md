@@ -1,7 +1,7 @@
 # ADR-0013: Supabase as the backend platform
 
 **Date:** 2026-05-16
-**Status:** Accepted — amends [ADR-0011](ADR-0011-v1-scope-triage.md) and [ADR-0004](ADR-0004-tier-0-viral-before-backend.md)
+**Status:** Superseded by [ADR-0020](ADR-0020-sync-off-supabase-cloudflare-worker.md) — originally amended [ADR-0011](ADR-0011-v1-scope-triage.md) and [ADR-0004](ADR-0004-tier-0-viral-before-backend.md)
 **Source:** [docs/accounts-plan.md](../accounts-plan.md)
 
 ## Context

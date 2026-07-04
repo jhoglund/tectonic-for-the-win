@@ -54,11 +54,11 @@ jobs:
           VITE_MIMIR_ENDPOINT: ${{ vars.VITE_MIMIR_ENDPOINT }}
           VITE_MIMIR_TOKEN: ${{ secrets.VITE_MIMIR_TOKEN }}
           VITE_MIMIR_APP_VERSION: ${{ github.sha }}
-          # Supabase accounts (ADR-0013). When unset the app builds
-          # local-only with accounts disabled. The anon key is
-          # client-safe to ship — RLS is the security boundary.
-          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          # Profile sync (ADR-0020) — the Cloudflare Worker + KV backend.
+          # When unset the app builds local-only with sync disabled. The
+          # bearer secret ships in the bundle (single-user, low stakes).
+          VITE_SYNC_URL: ${{ vars.VITE_SYNC_URL }}
+          VITE_SYNC_SECRET: ${{ secrets.VITE_SYNC_SECRET }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

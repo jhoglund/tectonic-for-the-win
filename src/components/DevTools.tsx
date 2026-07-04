@@ -1,5 +1,4 @@
 import { defaultProfile, isPremium, type SolveRecord } from '../lib/profile';
-import { useAuth } from '../lib/authContext';
 import { useDevView } from '../lib/devViewContext';
 import {
   STAGE_NAMES,
@@ -14,24 +13,6 @@ import {
 } from '../lib/progression';
 import { useProfile } from '../lib/profileContext';
 import { usePaywall } from '../lib/paywallContext';
-
-interface DevToolsProps {
-  /** Opens the sign-in / sign-up sheet (owned by SettingsScreen). */
-  onOpenAuth: () => void;
-}
-
-/** Short label for the AUTH group — the current session at a glance. */
-function authLabel(
-  status: string,
-  email: string | undefined,
-  isAnonymous: boolean | undefined,
-): string {
-  if (status === 'disabled') return 'DISABLED';
-  if (status === 'loading') return 'LOADING…';
-  if (status === 'anonymous' || isAnonymous) return 'ANONYMOUS';
-  if (status === 'signed-in') return `SIGNED IN · ${email ?? 'unknown'}`;
-  return status.toUpperCase();
-}
 
 const STAGES: PlayerStage[] = [0, 1, 2, 3, 4, 5];
 const MASTERY_STATES: MasteryState[] = ['learning', 'familiar', 'mastered', 'legend'];
@@ -149,9 +130,8 @@ function DevBtn({
  * setting the profile into the state that routes to them: stage 0 shows
  * onboarding, a trailing `celebratedStage` shows the stage-up card, etc.
  */
-export function DevTools({ onOpenAuth }: DevToolsProps) {
+export function DevTools() {
   const { profile, devSetProfile } = useProfile();
-  const { status, user, signOut } = useAuth();
   const { viewAsGuest, setViewAsGuest } = useDevView();
   const { openPaywall } = usePaywall();
   const premium = isPremium(profile);
@@ -226,20 +206,13 @@ export function DevTools({ onOpenAuth }: DevToolsProps) {
           }
         />
         <DevBtn label="Paywall" onClick={() => openPaywall('debug')} />
-        <DevBtn label="Save-progress sheet" onClick={onOpenAuth} />
       </Group>
 
-      <Group label={`AUTH — ${authLabel(status, user?.email, user?.isAnonymous)}`}>
+      <Group label="DEV VIEW">
         <DevBtn
           label={viewAsGuest ? 'Stop viewing as guest' : 'View as guest'}
           active={viewAsGuest}
           onClick={() => setViewAsGuest(!viewAsGuest)}
-        />
-        <DevBtn label="Open Save-progress sheet" onClick={onOpenAuth} />
-        <DevBtn
-          label={status === 'signed-in' ? 'Sign out (back to anonymous)' : 'Reset to anonymous'}
-          onClick={() => void signOut()}
-          danger={status === 'signed-in'}
         />
       </Group>
       <p

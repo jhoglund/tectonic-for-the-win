@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import { HomeLanding } from './screens/HomeLanding';
@@ -7,11 +7,9 @@ import { SolvingScreen } from './screens/SolvingScreen';
 import { TutorialScreen } from './screens/TutorialScreen';
 import { WelcomeScreen } from './screens/WelcomeScreen';
 import { StatsScreen } from './screens/StatsScreen';
-import { SettingsScreen } from './screens/SettingsScreen';
 import { SolvedScreen } from './screens/SolvedScreen';
 import { UnresolvedPuzzlesScreen } from './screens/UnresolvedPuzzlesScreen';
 import { TabBar, type Tab } from './components/TabBar';
-import { AuthSheet } from './components/AuthSheet';
 import { Board, type CellOverlay } from './components/Board';
 import { Keypad } from './components/Keypad';
 import { Paywall } from './components/Paywall';
@@ -708,16 +706,6 @@ function SolvedCapture() {
   );
 }
 
-function SettingsWithAuth() {
-  const [open, setOpen] = useState(true);
-  return (
-    <>
-      <SettingsScreen />
-      <AuthSheet open={open} onClose={() => setOpen(false)} />
-    </>
-  );
-}
-
 function ExactScreens() {
   return (
     <Providers>
@@ -754,9 +742,6 @@ function ExactScreens() {
           </PhoneFrame>
           <PhoneFrame name="Stats" active="stats">
             <StatsScreen />
-          </PhoneFrame>
-          <PhoneFrame name="Settings auth">
-            <SettingsWithAuth />
           </PhoneFrame>
           <PhoneFrame name="All unfinished">
             <UnresolvedPuzzlesScreen

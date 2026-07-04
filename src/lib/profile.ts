@@ -326,13 +326,11 @@ export function isDeveloper(profile: PlayerProfile): boolean {
 }
 
 /**
- * Emails granted the developer role automatically on sign-in (ADR-0014).
- * The in-app 7-tap Version unlock still works for everyone; this is the
- * account-backed path, so a known developer email is elevated on every
- * device it signs in on — no per-device tapping. The list ships in the
- * client bundle, which is acceptable: the allowlist only elevates a
- * profile *after* Supabase has authenticated the email, so the account
- * password stays the real gate.
+ * Emails granted the developer role automatically (ADR-0014). This was
+ * the account-backed elevation path under Supabase auth. Since ADR-0020
+ * removed auth (the local user has no email), this path is inert and the
+ * in-app 7-tap Version unlock is the live way to elevate. Kept for the
+ * `withDeveloperRole` call shape and in case an email identity returns.
  */
 export const DEVELOPER_EMAILS: readonly string[] = ['jonas@stixy.com'];
 

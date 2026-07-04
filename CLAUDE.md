@@ -72,7 +72,8 @@ Before writing or modifying any UI code:
 - **Tailwind CSS 4** (CSS-driven config, no `tailwind.config.js`)
 - Hand-rolled puzzle engine in `src/engine/` — generator, solver, hint chain, URL codec
 - Web Worker for puzzle generation (`generator.worker.ts`)
-- No backend yet — local-only state, share via URL hash
+- Local-first state (share via URL hash); single-user profile sync via a
+  Cloudflare Worker + KV, env-gated and optional (ADR-0020, `sync-worker/`)
 - **Open Design** at `http://open-design.test` for UX iteration (see `specs/design-workflow.md`)
 - **Capacitor** planned for iOS wrapper (not yet scaffolded; ADR pending)
 
